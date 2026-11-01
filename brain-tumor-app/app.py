@@ -8,13 +8,25 @@ import matplotlib.pyplot as plt
 
 st.set_page_config(page_title="TinyBrainNet-MT Diagnostic Suite", layout="wide")
 
-MODEL_PATH = Path("model/tinybrainnet.onnx")
-META_PATH = Path("model/meta.json")
+# ডাইনামিক পাথ কনফিগারেশন (রুট এবং সাব-ফোল্ডার উভয় পরিবেশেই কাজ করবে)
+BASE_DIR = Path(__file__).resolve().parent
+
+MODEL_PATH = BASE_DIR / "model" / "tinybrainnet.onnx"
+if not MODEL_PATH.exists():
+    MODEL_PATH = Path("model/tinybrainnet.onnx")
+
+META_PATH = BASE_DIR / "model" / "meta.json"
+if not META_PATH.exists():
+    META_PATH = Path("model/meta.json")
+
+SAMPLES_DIR = BASE_DIR / "samples"
+if not SAMPLES_DIR.exists():
+    SAMPLES_DIR = Path("samples")
 
 @st.cache_resource
 def load_model():
     if not MODEL_PATH.exists():
-        st.error("Model binary not found at model/tinybrainnet.onnx")
+        st.error(f"Model binary not found at: {MODEL_PATH}")
         return None, {}
     meta = json.loads(META_PATH.read_text()) if META_PATH.exists() else {}
     so = ort.SessionOptions()
@@ -39,13 +51,13 @@ c1, c2 = st.columns([1, 1.3])
 
 with c1:
     st.subheader("1. Input MRI Slice")
-    samples = list(Path("samples").glob("*.jpg")) + list(Path("samples").glob("*.png"))
+    samples = list(SAMPLES_DIR.glob("*.jpg")) + list(SAMPLES_DIR.glob("*.png"))
     names = ["-- Upload Scan --"] + [p.name for p in samples]
     sel = st.selectbox("Select a test sample or upload an image:", names)
     
     img_pil = None
     if sel != "-- Upload Scan --":
-        img_pil = Image.open(Path("samples") / sel).convert("RGB")
+        img_pil = Image.open(SAMPLES_DIR / sel).convert("RGB")
     else:
         up = st.file_uploader("Upload Brain MRI (JPG / PNG)", type=["jpg", "png", "jpeg"])
         if up:
@@ -107,3 +119,4 @@ if img_pil and sess:
         ax[2].axis("off")
 
         st.pyplot(fig)
+        plt.close(fig)
